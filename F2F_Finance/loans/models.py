@@ -266,6 +266,75 @@ class Notification(models.Model):
         return f"Notification for {self.user.phone}"
 
 
+# ----------------------------
+# UserActivity Model (Logs & Info)
+# ----------------------------
+
+class UserActivity(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='activities'
+    )
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='triggered_activities', null=True, blank=True)
+    activity = models.TextField()
+    activity_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('INFO', 'Info'),
+            ('SUCCESS', 'Success'),
+            ('ERROR', 'Error'),
+            ('ALERT', 'Alert'),
+            ('LOGIN', 'Login'),
+        ],
+        default='INFO'
+    )
+    metadata = models.JSONField(blank=True, null=True, help_text="Optional contextual data (loan_id, emi_id, etc.)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Activity ({self.activity_type}) for {self.user.phone}"
+
+
+# ----------------------------
+# RequiredAction Model (Tasks/Reminders)
+# ----------------------------
+
+class RequiredAction(models.Model):
+    ACTION_TYPES = [
+        ('LOAN', 'Loan'),
+        ('EMI', 'EMI'),
+        ('REPAYMENT', 'Repayment'),
+        ('PAYMENT', 'Payment'),
+        ('PROFILE', 'Profile Update'),
+        ('KYC', 'KYC Verification'),
+        ('FINANCIAL_DETAIL', 'Financial Detail'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='required_actions'
+    )
+    action_type = models.CharField(max_length=20, choices=ACTION_TYPES)
+    action_desc = models.TextField()
+    related_object_id = models.CharField(
+        max_length=100, blank=True, null=True,
+        help_text="Optional: ID of related object like loan, payment, etc."
+    )
+    metadata = models.JSONField(blank=True, null=True, help_text="Optional contextual data for UI or logic")
+    due_date = models.DateField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_action_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['is_action_completed', 'due_date', '-created_at']
+
+    def __str__(self):
+        return f"Action: {self.action_type} for {self.user.phone}"
+
+
 # ----------------------------------
 # DOCUMENT VERIFICATION
 # ----------------------------------

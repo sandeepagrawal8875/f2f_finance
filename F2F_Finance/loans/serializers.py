@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from phonenumber_field.serializerfields import PhoneNumberField
-from .models import UserProfile, FinancialDetails, Loan, EMI, PaymentRequest, Transaction, Notification, KYC, OTP
+from .models import UserProfile, FinancialDetails, Loan, EMI, UserActivity, PaymentRequest, Transaction, Notification, KYC, OTP
 
 User = get_user_model()
 
@@ -94,10 +94,46 @@ class BorrowerLoanRequestSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+# class LenderLoanOfferSerializer(serializers.ModelSerializer):
+#     lender_decision = serializers.CharField(
+#         max_length=20,
+#         choices=[
+#             ('APPROVED', 'Approved'),
+#             ('REJECTED', 'Rejected'),
+#         ],
+#         default='REJECTED'
+#     )
+
+#     class Meta:
+#         model = Loan
+#         fields = ['lender_decision', 'principal_amount', 'interest_rate', 'lender_remarks']
+
+
 class LenderLoanOfferSerializer(serializers.ModelSerializer):
+    lender_decision = serializers.ChoiceField(
+        choices=[('APPROVED', 'Approved'), ('REJECTED', 'Rejected')],
+        required=True
+    )
+    principal_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    interest_rate = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    lender_remarks = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Loan
-        fields = ['principal_amount', 'interest_rate', 'lender_remarks']
+        fields = ['lender_decision', 'principal_amount', 'interest_rate', 'lender_remarks']
+
+
+class UserActivitySerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserActivity
+        fields = ['id', 'activity', 'created_at', 'is_read', 'actor_name']
+
+    def get_actor_name(self, obj):
+        if obj.actor:
+            return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
+        return None
 
 
 class LoanStatusUpdateSerializer(serializers.ModelSerializer):

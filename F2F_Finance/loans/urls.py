@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (SendOTPView, VerifyOTPView, CurrentUserView, UserProfileView,LogoutView, UserFinancialDetailsView,
+from .views import (SendOTPView, UserActivityListView, VerifyOTPView, CurrentUserView, UserProfileView,LogoutView, UserFinancialDetailsView,
                     PublicUserProfileView,PublicUserFinancialView,
                     LoanRequestCreateView, BorrowerLoanRequestListView, BorrowerLoanRequestDetailView, BorrowerLoanDecisionView, BorrowerLoanDecisionView,
                     LenderLoanRequestListView, LenderLoanRequestDetailView, LenderLoanOfferView,
@@ -19,6 +19,7 @@ urlpatterns = [
     path('account/financial/', UserFinancialDetailsView.as_view(), name='account-financial'),
     path('account/kyc/', UserKYCView.as_view(), name='account-kyc'),
     path('account/notifications/', UserNotificationView.as_view(), name='account-notifications'),
+    path('account/activity/', UserActivityListView.as_view(), name='account-activity'),
 
     # Public User Profile and financial-details
     path('users/<int:user_id>/profile/', PublicUserProfileView.as_view(), name='user-profile-public'),

@@ -14,13 +14,13 @@ from django.utils import timezone
 from django.db.models import Sum, Max
 
 #Our App Libraries
-from .models import (User, OTP, UserProfile, FinancialDetails, Loan, EMI, PaymentRequest,
+from .models import (User, OTP, UserActivity, UserProfile, FinancialDetails, Loan, EMI, PaymentRequest,
                       Transaction, Notification, KYC)
 from .serializers import (
     CurrentUserSerializer, UserProfileSerializer, FinancialDetailsSerializer,
     PublicUserProfileSerializer, PublicUserFinancialSerializer,
     LoanRequestSerializer,LenderLoanRequestSerializer, 
-    BorrowerLoanRequestSerializer, LenderLoanOfferSerializer, EMISerializer,
+    BorrowerLoanRequestSerializer, LenderLoanOfferSerializer, UserActivitySerializer, EMISerializer,
     PaymentRequestSerializer, TransactionSerializer, NotificationSerializer,
     KYCSerializer, PhoneSerializer, OTPVerifySerializer
 )
@@ -228,9 +228,9 @@ class BorrowerLoanRequestDetailView(APIView):
         serializer = BorrowerLoanRequestSerializer(loan)
         return Response(serializer.data)
 
-
 class LenderLoanOfferView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request, pk):
         try:
             loan = Loan.objects.get(pk=pk, lender=request.user, status='PENDING')
@@ -238,39 +238,58 @@ class LenderLoanOfferView(APIView):
             return Response({"error": "Loan not found or already processed."}, status=404)
 
         serializer = LenderLoanOfferSerializer(loan, data=request.data, partial=True)
-
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
-        
-        # Checking Principal amount and requested amount
-        principal = serializer.validated_data.get("principal_amount",loan.principal_amount)
-        if principal > loan.requested_amount:
-            return Response({"msg": "Principal amount cannot be higher than the requested amount."}, status=400)
-        
-        interest_rate = serializer.validated_data.get("interest_rate",loan.interest_rate)
-        is_interest_rate_modified = True if interest_rate!=0 else False
 
-        if is_interest_rate_modified or principal != loan.requested_amount:
+        lender_decision = serializer.validated_data.get("lender_decision")
+
+        if lender_decision == "REJECTED":
             loan = serializer.save(
+                status='REJECTED',
+                rejected_at=timezone.now()
+            )
+            send_status_update(loan, "REJECTED")
+            return Response({"msg": "Loan rejected by the lender."})
+
+        elif lender_decision == "APPROVED":
+            principal = serializer.validated_data.get("principal_amount", loan.principal_amount)
+            if principal > loan.requested_amount:
+                return Response({"msg": "Principal amount cannot be higher than the requested amount."}, status=400)
+
+            interest_rate = serializer.validated_data.get("interest_rate", loan.interest_rate)
+            is_interest_rate_modified = interest_rate != loan.interest_rate
+
+            if is_interest_rate_modified or principal != loan.requested_amount:
+                loan = serializer.save(
                     is_funded_by_lender=True,
                     funded_at=timezone.now(),
                     approved_at=timezone.now(),
                     is_interest_rate_modified=is_interest_rate_modified,
                     status='APPROVED'
                 )
-            send_status_update(loan, "APPROVED")
-            return Response({"msg": "Loan offer modified and funded to platform."})
-        else:
-            loan = serializer.save(
+                send_status_update(loan, "APPROVED")
+                return Response({"msg": "Loan offer modified and funded to platform."})
+            else:
+                loan = serializer.save(
                     is_funded_by_lender=True,
                     funded_at=timezone.now(),
                     approved_at=timezone.now(),
-                    status='ONGOING',
-                    accepted_at = timezone.now()
+                    accepted_at=timezone.now(),
+                    status='ONGOING'
                 )
-            send_status_update(loan, "ONGOING")
-            send_pdf_agreement(loan)
-            return Response({"msg": "Loan accepted and disbursed to borrower."})
+                send_status_update(loan, "ONGOING")
+                send_pdf_agreement(loan)
+                return Response({"msg": "Loan accepted and disbursed to borrower."})
+
+        return Response({"msg": "No valid action taken."})
+
+class UserActivityListView(APIView): 
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        activity = UserActivity.objects.filter(user=request.user).order_by('-created_at')
+        serializer = UserActivitySerializer(activity, many=True)
+        return Response(serializer.data)
 
 
 class BorrowerLoanDecisionView(APIView):
