@@ -1,17 +1,20 @@
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
 from rest_framework.routers import DefaultRouter
 from .views import (SendOTPView, UserActivityListView, VerifyOTPView, CurrentUserView, UserProfileView,LogoutView, UserFinancialDetailsView,
                     PublicUserProfileView,PublicUserFinancialView,
                     LoanRequestCreateView, BorrowerLoanRequestListView, BorrowerLoanRequestDetailView, BorrowerLoanDecisionView, BorrowerLoanDecisionView,
                     LenderLoanRequestListView, LenderLoanRequestDetailView, LenderLoanOfferView,
                     PaymentRequestView, TransactionListView, UserNotificationView, UserKYCView,LenderPaymentsSummaryView,
-                    BorrowedPaymentsSummaryView)
+                    BorrowedPaymentsSummaryView, razorpay_webhook)
 
 urlpatterns = [
     # User auth
-    path('auth/otp/send/', SendOTPView.as_view(), name='auth-otp-send'),
-    path('auth/otp/verify/', VerifyOTPView.as_view(), name='auth-otp-verify'),
-    path('auth/logout/', LogoutView.as_view(), name='auth-logout'),
+    path('api/auth/request-otp/', SendOTPView.as_view(), name='auth-otp-send'),
+    path('api/auth/verify-otp/', VerifyOTPView.as_view(), name='auth-otp-verify'),
+    path('api/auth/logout/', LogoutView.as_view(), name='auth-logout'),
 
     # Auth User Profile & User Details urls
     path('account/me/', CurrentUserView.as_view(), name='account-me'),
@@ -30,7 +33,8 @@ urlpatterns = [
     path('loans/borrower/', BorrowerLoanRequestListView.as_view(), name='loan-request-list-borrower'),
     path('loans/<int:pk>/borrower/', BorrowerLoanRequestDetailView.as_view(), name='loan-request-detail-borrower'),
     path('loans/<int:pk>/borrower/decision/', BorrowerLoanDecisionView.as_view(), name='loan-request-decision-borrower'),
-
+    path('api/razorpay/webhook/', razorpay_webhook, name='razorpay-webhook'),
+    
     # Loan Offers (Lender Side)
     path('loans/lender/', LenderLoanRequestListView.as_view(), name='loan-request-list-lender'),
     path('loans/<int:pk>/lender/', LenderLoanRequestDetailView.as_view(), name='loan-request-detail-lender'),
@@ -47,5 +51,6 @@ urlpatterns = [
 ]
 
 
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 

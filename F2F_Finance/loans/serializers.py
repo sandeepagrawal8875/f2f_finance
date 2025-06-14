@@ -70,6 +70,7 @@ class LoanRequestSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("One-time repayment date required.")
         return data
 
+
 class UserMinimalSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='profile.first_name', read_only=True)
     last_name = serializers.CharField(source='profile.last_name', read_only=True)

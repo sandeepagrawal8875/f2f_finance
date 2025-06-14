@@ -132,7 +132,8 @@ class Loan(models.Model):
         max_length=20,
         choices=[
             ('PENDING', 'Pending'),            # Awaiting lender decision
-            ('APPROVED', 'Approved'),          # Lender has funded the loan to platform
+            ('APPROVED', 'Approved'),          # Lender has Approved the loan.
+            ('PARTIAL_APPROVED', 'Partial Approved'),          # Lender has partially approved the loan
             ('REJECTED', 'Rejected'),          # Rejected by lender
             ('CANCELLED', 'Cancelled'),        # Cancelled by borrower before approval or acceptance
             ('ONGOING', 'Ongoing'),            # Borrower accepted and received funds
@@ -239,17 +240,78 @@ class PaymentRequest(models.Model):
 # TRANSACTION LOG
 # ----------------------------------
 
+# class Transaction(models.Model):
+#     loan = models.ForeignKey(Loan, on_delete=models.SET_NULL, null=True, blank=True)
+#     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='transactions_sent')
+#     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='transactions_received')
+#     amount = models.DecimalField(max_digits=10, decimal_places=2)
+#     status = models.CharField(max_length=20, choices=[
+#                 ('INITIATE', 'Initiate'),
+#                 ('REJECTED', 'Rejected'),
+#                 ('SUCCESSFUL', 'Successful'),
+#             ], blank=True, null=True)
+#     payment_platform = models.CharField(max_length=20, choices=[
+#                 ('RAZORPAY', 'razorpay'),
+#                 ('PHONEPE', 'Phonepe'),
+#                 ('PAYTM', 'Paytm'),
+#             ], blank=True, null=True)
+#     payment_order_id = models.CharField(max_length=20, blank=True, null=True)
+#     transaction_type = models.CharField(max_length=20, choices=[
+#                 ('LOAN_PAYMENT', 'Loan Payment'),
+#                 ('PAYOUT', 'Payout'),
+#                 ('REFUND', 'Refund'),
+#                 ('EMI', 'EMI'),
+#                 ('REQUESTED_PAYMENT', 'Requested payment'),
+#             ], blank=True, null=True)
+#     payment_request = models.ForeignKey(PaymentRequest, on_delete=models.SET_NULL, null=True, blank=True)
+#     timestamp = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"Transaction of ₹{self.amount} on {self.timestamp}"
+
 class Transaction(models.Model):
+    loan = models.ForeignKey(Loan, on_delete=models.SET_NULL, null=True, blank=True)
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='transactions_sent')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='transactions_received')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    purpose = models.TextField(blank=True, null=True)
-    loan = models.ForeignKey(Loan, on_delete=models.SET_NULL, null=True, blank=True)
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    
+    payment_platform = models.CharField(max_length=20, choices=[
+        ('RAZORPAY', 'Razorpay'),
+        ('PHONEPE', 'PhonePe'),
+        ('PAYTM', 'Paytm'),
+    ], blank=True, null=True)
+
+    transaction_type = models.CharField(max_length=30, choices=[
+        ('LOAN_PAYMENT', 'Loan Payment'),      # Lender → Platform
+        ('PAYOUT', 'Payout to Borrower'),      # Platform → Borrower
+        ('REFUND', 'Refund to Lender'),        # Platform → Lender
+        ('EMI', 'EMI Payment'),                # Borrower → Platform
+        ('REQUESTED_PAYMENT', 'Requested Payment'),  # Custom
+    ], blank=True, null=True)
+
+    status = models.CharField(max_length=20, choices=[
+        ('INITIATED', 'Initiated'),
+        ('PENDING', 'Pending'),
+        ('COMPLETED', 'Completed'),
+        ('FAILED', 'Failed'),
+    ], default='INITIATED')
+
+    razorpay_order_id = models.CharField(max_length=100, blank=True, null=True)
+    razorpay_payment_id = models.CharField(max_length=100, blank=True, null=True)
+    reference_id = models.CharField(max_length=100, blank=True, null=True, help_text="For audit or external references")
+    
+    metadata = models.JSONField(null=True, blank=True, help_text="Any extra data from Razorpay or app context")
     payment_request = models.ForeignKey(PaymentRequest, on_delete=models.SET_NULL, null=True, blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    initiated_at = models.DateTimeField(null=True, blank=True)  # Time when transaction was actually initiated
+    completed_at = models.DateTimeField(null=True, blank=True)  # Payment success timestamp
+    failed_at = models.DateTimeField(null=True, blank=True)     # Payment failure timestamp
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Transaction of ₹{self.amount} on {self.timestamp}"
+        return f"{self.transaction_type} - ₹{self.amount} ({self.status})"
 
 
 # ----------------------------------

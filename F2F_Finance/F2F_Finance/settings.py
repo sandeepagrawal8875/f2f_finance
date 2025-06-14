@@ -117,11 +117,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
+USE_TZ = True
+
 
 USE_I18N = True
 
-USE_TZ = True
+# TIME_ZONE = 'UTC'
+# USE_TZ = True
 
 #Configure the abstract user model
 AUTH_USER_MODEL = 'loans.User'
@@ -160,3 +163,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+RAZORPAY_KEY_ID = 'rzp_test_me2jHrygLh4PbZ'
+RAZORPAY_KEY_SECRET = 'i1MZFxb98KtVnzkPhM3vI5FM'
